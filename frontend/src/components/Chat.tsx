@@ -7,11 +7,36 @@ interface Message {
   content: string;
 }
 
+const AVAILABLE_MODELS = [
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'gpt-4o-mini',
+  'gpt-3.5-turbo'
+] as const;
+
+const DEFAULT_DEVELOPER_MESSAGES = [
+  'You are a helpful AI assistant.',
+  'You are a wise Python programmer.',
+  'You are a creative writing expert.',
+  'You are a data science expert.',
+  'You are a web development expert.',
+  'You are a system design expert.',
+  'You are a cybersecurity expert.',
+  'You are a machine learning expert.',
+  'You are a software architecture expert.',
+  'You are a database optimization expert.',
+] as const;
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [selectedModel, setSelectedModel] = useState<typeof AVAILABLE_MODELS[number]>('gpt-4.1-mini');
+  const [developerMessages, setDeveloperMessages] = useState<string[]>([...DEFAULT_DEVELOPER_MESSAGES]);
+  const [selectedDeveloperMessage, setSelectedDeveloperMessage] = useState<string>(DEFAULT_DEVELOPER_MESSAGES[0]);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [showCustomPromptInput, setShowCustomPromptInput] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -21,6 +46,15 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleAddCustomPrompt = () => {
+    if (customPrompt.trim() && !developerMessages.includes(customPrompt.trim())) {
+      setDeveloperMessages(prev => [...prev, customPrompt.trim()]);
+      setSelectedDeveloperMessage(customPrompt.trim());
+      setCustomPrompt('');
+      setShowCustomPromptInput(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +72,9 @@ export default function Chat() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          developer_message: "You are a helpful AI assistant.",
+          developer_message: selectedDeveloperMessage,
           user_message: userMessage,
+          model: selectedModel,
           api_key: apiKey,
         }),
       });
@@ -77,14 +112,82 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-[calc(100%-4rem)] max-w-4xl mx-auto">
-      <div className="mb-4">
-        <input
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="Enter your OpenAI API key"
-          className="w-full p-2 border rounded"
-        />
+      <div className="mb-4 space-y-4">
+        <div className="flex gap-4">
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Enter your OpenAI API key"
+            className="flex-1 p-2 border border-blue-200 rounded bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all"
+          />
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value as typeof AVAILABLE_MODELS[number])}
+            className="w-48 p-2 border border-blue-200 rounded bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all"
+          >
+            {AVAILABLE_MODELS.map((model) => (
+              <option key={model} value={model}>
+                {model}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <label htmlFor="developer-message" className="block text-sm font-medium text-blue-700 mb-1">
+              AI Assistant Role
+            </label>
+            <select
+              id="developer-message"
+              value={selectedDeveloperMessage}
+              onChange={(e) => {
+                if (e.target.value === 'custom') {
+                  setShowCustomPromptInput(true);
+                } else {
+                  setSelectedDeveloperMessage(e.target.value);
+                }
+              }}
+              className="w-full p-2 border border-blue-200 rounded bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all"
+            >
+              {developerMessages.map((message) => (
+                <option key={message} value={message}>
+                  {message}
+                </option>
+              ))}
+              <option value="custom">+ Add Custom Prompt</option>
+            </select>
+            
+            {showCustomPromptInput && (
+              <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-white border border-blue-200 rounded shadow-lg z-10">
+                <textarea
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="Enter your custom prompt..."
+                  className="w-full p-2 border border-blue-200 rounded mb-2 h-24 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setShowCustomPromptInput(false);
+                      setCustomPrompt('');
+                    }}
+                    className="px-3 py-1 border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddCustomPrompt}
+                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       
       <div className={`flex-1 mb-4 space-y-4 ${messages.length > 0 ? 'overflow-y-auto' : 'overflow-hidden'}`}>
@@ -94,7 +197,7 @@ export default function Chat() {
             className={`p-4 rounded-lg ${
               message.role === 'user'
                 ? 'bg-blue-500 text-white ml-auto'
-                : 'bg-gray-200 text-gray-800'
+                : 'bg-blue-50 text-blue-900 border border-blue-100'
             } max-w-[80%]`}
           >
             {message.content}
@@ -109,13 +212,13 @@ export default function Chat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type your message..."
-          className="flex-1 p-2 border rounded"
+          className="flex-1 p-2 border border-blue-200 rounded bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all"
           disabled={isLoading || !apiKey}
         />
         <button
           type="submit"
           disabled={isLoading || !apiKey}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300 transition-colors"
         >
           {isLoading ? 'Sending...' : 'Send'}
         </button>
