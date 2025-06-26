@@ -62,7 +62,7 @@ async def chat(request: ChatRequest):
                 yield f"\n[ERROR] {str(e)}\n"
 
         # Return a streaming response to the client
-        return StreamingResponse(generate(), media_type="text/plain")
+        return StreamingResponse(generate(), media_type="text/markdown")
     
     except Exception as e:
         # Handle any other errors that occur during processing
