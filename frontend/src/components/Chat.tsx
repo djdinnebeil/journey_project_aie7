@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -198,9 +200,24 @@ export default function Chat() {
               message.role === 'user'
                 ? 'bg-blue-500 text-white ml-auto'
                 : 'bg-blue-50 text-blue-900 border border-blue-100'
-            } max-w-[80%]`}
+            } max-w-[80%] markdown-content`}
           >
-            {message.content}
+            <ReactMarkdown
+              remarkPlugins={[remarkBreaks]}
+              components={{
+                p: ({ children }) => <p>{children}</p>,
+                ol: ({ children }) => <ol className="list-decimal pl-4 m-0 mb-0 last:mb-0">{children}</ol>,
+                ul: ({ children }) => <ul className="list-disc pl-4 m-0 mb-0 last:mb-4">{children}</ul>,
+                li: ({ children }) => <li className="m-0 mb-0 p-0">{children}</li>,
+                a: ({ href, children }) => (
+                  <a href={href} target="_blank" rel="noopener noreferrer">
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
           </div>
         ))}
         <div ref={messagesEndRef} />

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 # Import OpenAI client for interacting with OpenAI's API
 from openai import OpenAI
+from openai._exceptions import AuthenticationError
 import os
 
 from typing import Optional
@@ -40,26 +41,31 @@ async def chat(request: ChatRequest):
         
         # Create an async generator function for streaming responses
         async def generate():
-            # Create a streaming chat completion request
-            stream = client.chat.completions.create(
-                model=request.model,
-                messages=[
-                    {"role": "developer", "content": request.developer_message},
-                    {"role": "user", "content": request.user_message}
-                ],
-                stream=True  # Enable streaming response
-            )
-            
-            # Yield each chunk of the response as it becomes available
-            for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
-                    yield chunk.choices[0].delta.content
+            try:
+                # Create a streaming chat completion request
+                stream = client.chat.completions.create(
+                    model=request.model,
+                    messages=[
+                        {"role": "developer", "content": request.developer_message},
+                        {"role": "user", "content": request.user_message}
+                    ],
+                    stream=True  # Enable streaming response
+                )
+                
+                # Yield each chunk of the response as it becomes available
+                for chunk in stream:
+                    if chunk.choices[0].delta.content is not None:
+                        yield chunk.choices[0].delta.content
+            except AuthenticationError:
+                yield "\n[ERROR] Invalid OpenAI API key. Please check your credentials.\n"
+            except Exception as e:
+                yield f"\n[ERROR] {str(e)}\n"
 
         # Return a streaming response to the client
         return StreamingResponse(generate(), media_type="text/plain")
     
     except Exception as e:
-        # Handle any errors that occur during processing
+        # Handle any other errors that occur during processing
         raise HTTPException(status_code=500, detail=str(e))
 
 # Define a health check endpoint to verify API status
