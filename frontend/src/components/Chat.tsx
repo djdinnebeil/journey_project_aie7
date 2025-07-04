@@ -40,6 +40,10 @@ export default function Chat() {
   const [customPrompt, setCustomPrompt] = useState('');
   const [showCustomPromptInput, setShowCustomPromptInput] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,15 +62,44 @@ export default function Chat() {
     }
   };
 
+  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPdfFile(e.target.files[0]);
+    }
+  };
+
+  const handlePdfUpload = async () => {
+    if (!pdfFile) return;
+    setUploading(true);
+    setUploadError(null);
+    setDocumentId(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', pdfFile);
+      const response = await fetch('/api/upload_pdf', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.status === 'ok') {
+        setDocumentId(data.document_id);
+      } else {
+        setUploadError(data.detail || 'Upload failed');
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !apiKey) return;
-
     const userMessage = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
-
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -78,6 +111,7 @@ export default function Chat() {
           user_message: userMessage,
           model: selectedModel,
           api_key: apiKey,
+          document_id: documentId,
         }),
       });
 
@@ -115,6 +149,29 @@ export default function Chat() {
   return (
     <div className="flex flex-col h-[calc(100%-4rem)] max-w-4xl mx-auto">
       <div className="mb-4 space-y-4">
+        <div className="flex gap-4 items-center">
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={handlePdfChange}
+            className="p-2 border border-blue-200 rounded bg-white"
+            disabled={uploading}
+          />
+          <button
+            onClick={handlePdfUpload}
+            disabled={!pdfFile || uploading}
+            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300 transition-colors"
+            type="button"
+          >
+            {uploading ? 'Uploading...' : 'Upload PDF'}
+          </button>
+          {documentId && (
+            <span className="ml-2 text-green-600">PDF indexed!</span>
+          )}
+          {uploadError && (
+            <span className="ml-2 text-red-600">{uploadError}</span>
+          )}
+        </div>
         <div className="flex gap-4">
           <input
             type="password"

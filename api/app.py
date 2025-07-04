@@ -1,6 +1,6 @@
 # Import required FastAPI components for building the API
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 # Import Pydantic for data validation and settings management
 from pydantic import BaseModel
@@ -8,6 +8,10 @@ from pydantic import BaseModel
 from openai import OpenAI
 from openai._exceptions import AuthenticationError
 import os
+import uuid
+from aimakerspace.text_utils import PDFLoader, CharacterTextSplitter
+from aimakerspace.vectordatabase import VectorDatabase
+import numpy as np
 
 from typing import Optional
 
@@ -31,28 +35,66 @@ class ChatRequest(BaseModel):
     user_message: str      # Message from the user
     model: Optional[str] = "gpt-4.1-mini"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
+    document_id: Optional[str] = None  # New: document/session ID for RAG
+
+# In-memory store for vector DBs, keyed by document/session ID
+vector_db_store = {}
+
+# Define the main chat endpoint that handles POST requests
+@app.post("/api/upload_pdf")
+async def upload_pdf(file: UploadFile = File(...)):
+    try:
+        # Save uploaded PDF to a temp file
+        temp_path = f"/tmp/{uuid.uuid4()}.pdf"
+        with open(temp_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        # Load and split PDF
+        loader = PDFLoader(temp_path)
+        documents = loader.load_documents()
+        splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        chunks = splitter.split_texts(documents)
+        # Build vector DB
+        vector_db = await VectorDatabase().abuild_from_list(chunks)
+        # Store in memory with a new document_id
+        document_id = str(uuid.uuid4())
+        vector_db_store[document_id] = {
+            "vector_db": vector_db,
+            "chunks": chunks
+        }
+        # Remove temp file
+        os.remove(temp_path)
+        return {"status": "ok", "document_id": document_id}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
 
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     try:
-        # Initialize OpenAI client with the provided API key
         client = OpenAI(api_key=request.api_key)
-        
-        # Create an async generator function for streaming responses
+        context_chunks = []
+        # If document_id is provided, use RAG
+        if request.document_id and request.document_id in vector_db_store:
+            vector_db = vector_db_store[request.document_id]["vector_db"]
+            chunks = vector_db_store[request.document_id]["chunks"]
+            # Retrieve top-3 relevant chunks
+            results = vector_db.search_by_text(request.user_message, k=3, return_as_text=True)
+            context_chunks = results
+        # Compose messages for LLM
+        messages = []
+        if context_chunks:
+            context_text = "\n---\n".join(context_chunks)
+            messages.append({"role": "system", "content": f"Relevant PDF context:\n{context_text}"})
+        messages.append({"role": "developer", "content": request.developer_message})
+        messages.append({"role": "user", "content": request.user_message})
         async def generate():
             try:
-                # Create a streaming chat completion request
                 stream = client.chat.completions.create(
                     model=request.model,
-                    messages=[
-                        {"role": "developer", "content": request.developer_message},
-                        {"role": "user", "content": request.user_message}
-                    ],
-                    stream=True  # Enable streaming response
+                    messages=messages,
+                    stream=True
                 )
-                
-                # Yield each chunk of the response as it becomes available
                 for chunk in stream:
                     if chunk.choices[0].delta.content is not None:
                         yield chunk.choices[0].delta.content
@@ -60,12 +102,8 @@ async def chat(request: ChatRequest):
                 yield "\n[ERROR] Invalid OpenAI API key. Please check your credentials.\n"
             except Exception as e:
                 yield f"\n[ERROR] {str(e)}\n"
-
-        # Return a streaming response to the client
         return StreamingResponse(generate(), media_type="text/markdown")
-    
     except Exception as e:
-        # Handle any other errors that occur during processing
         raise HTTPException(status_code=500, detail=str(e))
 
 # Define a health check endpoint to verify API status
