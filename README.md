@@ -1,12 +1,71 @@
-<p align = "center" draggable=”false” ><img src="https://github.com/AI-Maker-Space/LLM-Dev-101/assets/37101144/d1343317-fa2f-41e1-8af1-1dbb18399719" 
-     width="200px"
-     height="auto"/>
-</p>
+# 🚀 Beyond ChatGPT: The Ultimate Vibe-Coded PDF Chat App
 
+Welcome to your AI-powered, PDF-savvy, RAG-enabled, full-stack playground! This repo is your launchpad for building, testing, and deploying a Next.js + FastAPI app that lets you chat with your PDFs using OpenAI models and custom RAG magic. 
 
-## <h1 align="center" id="heading"> 👋 Welcome to the AI Engineer Challenge</h1>
+## 🗂️ Project Structure (What's Where?)
 
-## 🤖 Your First Vibe Coding LLM Application
+```
+/ (project root)
+│
+├── aimakerspace/      # Custom Python RAG & embedding library
+├── api/               # FastAPI backend (OpenAI chat, PDF upload, RAG)
+│   ├── app.py
+│   ├── requirements.txt
+│   └── README.md
+├── frontend/          # Next.js frontend (React)
+│   ├── src/
+│   ├── package.json
+│   └── README.md
+├── vercel.json        # Vercel monorepo config (routes, builds)
+├── README.md          # (This file!)
+└── ... (misc files)
+```
+
+## 🧪 Local Development: Test Like a Pro
+
+### 1. Backend (FastAPI)
+```bash
+cd api
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
+- Your backend is now at http://localhost:8000
+- Test endpoints: `/api/chat`, `/api/upload_pdf`, `/api/health`
+
+### 2. Frontend (Next.js)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+- Your frontend is now at http://localhost:3000
+- It talks to the backend at `/api/*` (just like in prod!)
+
+### 3. Local Integration Tips
+- If you want to run both servers and have the frontend talk to the backend, make sure both are running.
+- For advanced local proxying, check out Next.js rewrites in `next.config.js`.
+
+## 🚀 Deploying to Vercel (The Easy Way)
+1. Push your code to GitHub.
+2. Go to [Vercel](https://vercel.com/) and import your repo.
+3. Vercel auto-detects your monorepo using `vercel.json`:
+   - Builds frontend with Next.js
+   - Builds backend with Python (using `api/requirements.txt`)
+   - Routes `/api/*` to FastAPI, everything else to Next.js
+4. Set any required environment variables (like your OpenAI API key) in the Vercel dashboard.
+5. Deploy and get your live link!
+
+## 🧠 Pro Tips
+- Only one `vercel.json` at the root!
+- All backend dependencies go in `api/requirements.txt` (not `pyproject.toml`)
+- `aimakerspace/` is your custom Python library—import it in the backend, no install needed.
+- Want to add more AI magic? Drop new modules in `aimakerspace/` and use them in `api/app.py`.
+
+---
+
+# 🤖 Your First Vibe Coding LLM Application
 
 > If you need an introduction to `git`, or information on how to set up API keys for the tools we'll be using in this repository - check out our [Interactive Dev Environment for LLM Development](https://github.com/AI-Maker-Space/Interactive-Dev-Environment-for-AI-Engineers) which has everything you'd need to get started in this repository!
 
@@ -130,14 +189,14 @@ Here's a template to get your post started!
 ```
 🚀🎉 Exciting News! 🎉🚀
 
-🏗️ Today, I'm thrilled to announce that I've successfully built and shipped my first-ever LLM using the powerful combination of , and the OpenAI API! 🖥️
+🏗️ Today, I'm thrilled to announce that I've successfully built and shipped my first-ever LLM using the powerful combination of , and the OpenAI API! 🖥️
 
 Check it out 👇
 [LINK TO APP]
 
 A big shoutout to the @AI Makerspace for all making this possible. Couldn't have done it without the incredible community there. 🤗🙏
 
-Looking forward to building with the community! 🙌✨ Here's to many more creations ahead! 🥂🎉
+Looking forward to building with the community! 🙌✨ Here's to many more creations ahead! 🥂🎉
 
 Who else is diving into the world of AI? Let's connect! 🌐💡
 
