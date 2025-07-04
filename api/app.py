@@ -15,6 +15,7 @@ from aimakerspace.text_utils import PDFLoader, CharacterTextSplitter
 from aimakerspace.vectordatabase import VectorDatabase
 import numpy as np
 from aimakerspace.openai_utils.chatmodel import ChatOpenAI
+from aimakerspace.openai_utils.embedding import EmbeddingModel
 
 from typing import Optional
 
@@ -77,6 +78,7 @@ async def chat(request: ChatRequest):
     try:
         # Use ChatOpenAI with per-request api_key
         chat_client = ChatOpenAI(model_name=request.model, api_key=request.api_key)
+        chat_client.client = OpenAI(api_key=request.api_key)
         context_chunks = []
         # If document_id is provided, use RAG
         if request.document_id and request.document_id in vector_db_store:
