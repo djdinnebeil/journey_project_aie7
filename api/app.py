@@ -14,6 +14,7 @@ import uuid
 from aimakerspace.text_utils import PDFLoader, CharacterTextSplitter
 from aimakerspace.vectordatabase import VectorDatabase
 import numpy as np
+from aimakerspace.openai_utils.chatmodel import ChatOpenAI
 
 from typing import Optional
 
@@ -74,7 +75,8 @@ async def upload_pdf(file: UploadFile = File(...), api_key: str = Form(...)):
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     try:
-        client = OpenAI(api_key=request.api_key)
+        # Use ChatOpenAI with per-request api_key
+        chat_client = ChatOpenAI(model_name=request.model, api_key=request.api_key)
         context_chunks = []
         # If document_id is provided, use RAG
         if request.document_id and request.document_id in vector_db_store:
@@ -92,7 +94,7 @@ async def chat(request: ChatRequest):
         messages.append({"role": "user", "content": request.user_message})
         async def generate():
             try:
-                stream = client.chat.completions.create(
+                stream = chat_client.client.chat.completions.create(
                     model=request.model,
                     messages=messages,
                     stream=True
