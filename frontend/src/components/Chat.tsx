@@ -69,13 +69,14 @@ export default function Chat() {
   };
 
   const handlePdfUpload = async () => {
-    if (!pdfFile) return;
+    if (!pdfFile || !apiKey) return;
     setUploading(true);
     setUploadError(null);
     setDocumentId(null);
     try {
       const formData = new FormData();
       formData.append('file', pdfFile);
+      formData.append('api_key', apiKey);
       const response = await fetch('/api/upload_pdf', {
         method: 'POST',
         body: formData,
@@ -148,6 +149,15 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-[calc(100%-4rem)] max-w-4xl mx-auto">
+      <div className="mb-4 flex gap-4 items-center">
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="Enter your OpenAI API key"
+          className="flex-1 p-2 border border-blue-200 rounded bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all"
+        />
+      </div>
       <div className="mb-4 space-y-4">
         <div className="flex gap-4 items-center">
           <input
@@ -155,11 +165,11 @@ export default function Chat() {
             accept="application/pdf"
             onChange={handlePdfChange}
             className="p-2 border border-blue-200 rounded bg-white"
-            disabled={uploading}
+            disabled={uploading || !apiKey}
           />
           <button
             onClick={handlePdfUpload}
-            disabled={!pdfFile || uploading}
+            disabled={!pdfFile || uploading || !apiKey}
             className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300 transition-colors"
             type="button"
           >
@@ -173,13 +183,6 @@ export default function Chat() {
           )}
         </div>
         <div className="flex gap-4">
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your OpenAI API key"
-            className="flex-1 p-2 border border-blue-200 rounded bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all"
-          />
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value as typeof AVAILABLE_MODELS[number])}

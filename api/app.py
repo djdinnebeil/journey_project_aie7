@@ -44,7 +44,7 @@ vector_db_store = {}
 
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/upload_pdf")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(file: UploadFile = File(...), api_key: str = Form(...)):
     try:
         # Save uploaded PDF to a temp file
         temp_path = f"/tmp/{uuid.uuid4()}.pdf"
@@ -56,8 +56,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         documents = loader.load_documents()
         splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = splitter.split_texts(documents)
-        # Build vector DB
-        vector_db = await VectorDatabase().abuild_from_list(chunks)
+        # Build vector DB with user-provided api_key
+        vector_db = await VectorDatabase(embedding_model=EmbeddingModel(api_key=api_key)).abuild_from_list(chunks)
         # Store in memory with a new document_id
         document_id = str(uuid.uuid4())
         vector_db_store[document_id] = {
