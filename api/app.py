@@ -40,6 +40,7 @@ class ChatRequest(BaseModel):
     model: Optional[str] = "gpt-4.1-mini"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
     document_id: Optional[str] = None  # New: document/session ID for RAG
+    k: Optional[int] = 3  # Number of chunks to retrieve for RAG (default: 3)
 
 # In-memory store for vector DBs, keyed by document/session ID
 vector_db_store = {}
@@ -77,15 +78,15 @@ async def upload_pdf(file: UploadFile = File(...), api_key: str = Form(...)):
 async def chat(request: ChatRequest):
     try:
         # Use ChatOpenAI with per-request api_key
-        chat_client = ChatOpenAI(model_name=request.model, api_key=request.api_key)
-        chat_client.client = OpenAI(api_key=request.api_key)
+        model_name = request.model or "gpt-4.1-mini"
+        chat_client = ChatOpenAI(model_name=model_name, api_key=request.api_key)
         context_chunks = []
         # If document_id is provided, use RAG
         if request.document_id and request.document_id in vector_db_store:
             vector_db = vector_db_store[request.document_id]["vector_db"]
             chunks = vector_db_store[request.document_id]["chunks"]
-            # Retrieve top-3 relevant chunks
-            results = vector_db.search_by_text(request.user_message, k=3, return_as_text=True)
+            # Retrieve relevant chunks based on user's k parameter
+            results = vector_db.search_by_text(request.user_message, k=request.k, return_as_text=True)
             context_chunks = results
         # Compose messages for LLM
         messages = []
@@ -96,14 +97,8 @@ async def chat(request: ChatRequest):
         messages.append({"role": "user", "content": request.user_message})
         async def generate():
             try:
-                stream = chat_client.client.chat.completions.create(
-                    model=request.model,
-                    messages=messages,
-                    stream=True
-                )
-                for chunk in stream:
-                    if chunk.choices[0].delta.content is not None:
-                        yield chunk.choices[0].delta.content
+                async for chunk in chat_client.astream(messages):
+                    yield chunk
             except AuthenticationError:
                 yield "\n[ERROR] Invalid OpenAI API key. Please check your credentials.\n"
             except Exception as e:

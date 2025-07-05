@@ -27,6 +27,7 @@ const DEFAULT_DEVELOPER_MESSAGES = [
   'You are a machine learning expert.',
   'You are a software architecture expert.',
   'You are a database optimization expert.',
+  'You are a historical researcher.'
 ] as const;
 
 export default function Chat() {
@@ -44,6 +45,7 @@ export default function Chat() {
   const [uploading, setUploading] = useState(false);
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [kValue, setKValue] = useState<number>(3);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -113,6 +115,7 @@ export default function Chat() {
           model: selectedModel,
           api_key: apiKey,
           document_id: documentId,
+          k: kValue,
         }),
       });
 
@@ -182,7 +185,7 @@ export default function Chat() {
             <span className="ml-2 text-red-600">{uploadError}</span>
           )}
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value as typeof AVAILABLE_MODELS[number])}
@@ -194,6 +197,24 @@ export default function Chat() {
               </option>
             ))}
           </select>
+          
+          {documentId && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="k-value" className="text-sm font-medium text-blue-700">
+                Chunks to retrieve:
+              </label>
+              <input
+                id="k-value"
+                type="number"
+                min="1"
+                max="10"
+                value={kValue}
+                onChange={(e) => setKValue(parseInt(e.target.value) || 3)}
+                className="w-16 p-2 border border-blue-200 rounded bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all text-center"
+                title="Number of PDF chunks to retrieve for context (1-10)"
+              />
+            </div>
+          )}
         </div>
         
         <div className="flex gap-4">
