@@ -90,7 +90,11 @@ export default function Chat() {
         setUploadError(data.detail || 'Upload failed');
       }
     } catch (err: unknown) {
-      setUploadError(err.message || 'Upload failed');
+      if (err instanceof Error) {
+        setUploadError(err.message || 'Upload failed');
+      } else {
+        setUploadError('Upload failed');
+      }
     } finally {
       setUploading(false);
     }
